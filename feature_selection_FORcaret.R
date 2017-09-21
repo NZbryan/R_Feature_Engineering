@@ -8,7 +8,11 @@ RFwithGAM <- sbf(bbbDescr, logBBB,
                                          method = "cv"))
 RFwithGAM
 
-
+choose_repos = "http://mirrors.tuna.tsinghua.edu.cn/CRAN"
+if(!suppressWarnings(require(argparse))){
+  install.packages('argparse',repos=choose_repos)
+  require(argparse)
+}
 
 if(!suppressWarnings(require(C50))){
   install.packages('C50')
