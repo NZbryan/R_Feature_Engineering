@@ -4,7 +4,7 @@
 options(warn=-1)
 options(digits = 4)
 ### load the library
-pkgs = c('ROCR','argparse','doParallel','foreach')
+pkgs = c('ROCR','argparse')
 choose_repos = 'http://mirrors.tuna.tsinghua.edu.cn/CRAN'
 for(i in pkgs){
   if(!suppressWarnings(require(i,character.only = TRUE,warn.conflicts = F, quietly = T))){
@@ -42,7 +42,6 @@ test_x = subset(test_data,select = -label)
 
 
 Calc_auc = function(score,label){
-  require(ROCR)
   label = as.character(label)
   pred <- prediction(score, label)
   AUC = performance(pred, "auc")@y.values[[1]]
@@ -62,20 +61,6 @@ getmax = function(feature_name,AUC_list){
 }
 
 
-func_auclist = function(id_n,input_basic_f,input_loop_f){
-  model_f = append(input_basic_f,input_loop_f[id_n])
-  # fit_cv = cv.glmnet(train_x[,model_f], train_y, family="binomial",alpha=1,nfolds=10,type.measure="auc") # run the model
-  # train_predict = predict(fit_cv, train_x[,model_f], s=fit_cv$lambda.min)
-  train_daf = train_x[,model_f]
-  train_daf$label = train_y
-  fit_glm = glm(label ~.,family=binomial(link='logit'),data=train_daf)
-  train_predict =  predict(fit_glm,newdata=train_x[,model_f],type='response')
-  
-  train_auc = Calc_auc(train_predict,train_y)
-  # auc_list_train = append(auc_list_train,train_auc)
-  return(train_auc)
-}
-
 sga = as.numeric(lapply(seq(ncol(train_x)),function(i) Calc_auc(train_x[,i],train_y)))
 single_feature_auc = getmax(colnames(train_x),sga)
 first_f = single_feature_auc$feature_selected
@@ -89,15 +74,22 @@ basic_auc = first_auc
 j=0
 test_auc_first = Calc_auc(test_x[,first_f],test_y)
 auc_list_test = test_auc_first
-
 MAX_AUC_FUN_train_test = function(loop_feature){
   j<<-j+1
-  
-  cl <- makeCluster(8)
-  registerDoParallel(cl)
-  auc_list_train = foreach(x=seq(length(loop_feature)),.combine='c',
-                           .export=ls(envir=globalenv())) %dopar% func_auclist(x,basic_f,loop_feature)
-  stopCluster(cl)
+  auc_list_train = c()
+  for(i in seq(length(loop_feature))){
+    model_f = append(basic_f,loop_feature[i])
+    # fit_cv = cv.glmnet(train_x[,model_f], train_y, family="binomial",alpha=1,nfolds=10,type.measure="auc") # run the model
+    # train_predict = predict(fit_cv, train_x[,model_f], s=fit_cv$lambda.min)
+    train_daf = train_x[,model_f]
+    train_daf$label = train_y
+    fit_glm = glm(label ~.,family=binomial(link='logit'),data=train_daf)
+    train_predict =  predict(fit_glm,newdata=train_x[,model_f],type='response')
+    
+    train_auc = Calc_auc(train_predict,train_y)
+    auc_list_train = append(auc_list_train,train_auc)
+    
+  }
   
   get_max = getmax(loop_feature,auc_list_train)
   AucMax = get_max$AUC_max
