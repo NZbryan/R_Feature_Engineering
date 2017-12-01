@@ -32,11 +32,13 @@ parser$add_argument('-o', dest='outpath', metavar='path', type='character',
 
 args <- parser$parse_args()
 
-train_data = read.csv(args$train_data_arg,sep = '\t')
+train_data = read.csv(args$train_data_arg,sep = '\t',
+                      row.names = 1,stringsAsFactors = FALSE,check.names = FALSE,comment.char = "#")
 train_y = factor(train_data$label)
 train_x = subset(train_data,select = -label)
 
-test_data = read.csv(args$test_data_arg,sep = '\t')
+test_data = read.csv(args$test_data_arg,sep = '\t',
+                     row.names = 1,stringsAsFactors = FALSE,check.names = FALSE,comment.char = "#")
 test_y = factor(test_data$label)
 test_x = subset(test_data,select = -label)
 
@@ -120,6 +122,16 @@ MAX_AUC_FUN_train_test = function(loop_feature){
   
   cat(sprintf("feature个数: %d, train auc: %f, test auc: %s\n",j+1,AucMax,test_auc))
   
+  if(length(loop_feature)==0){
+    cat('搜索完所有feature,贪婪算法搜索不到最优feature')
+    return(data.frame(feature_selected=basic_f,AccumTrain_AUC=basic_auc,AccumTest_AUC=auc_list_test))
+  }
+  
+  if(length(basic_f)>1000){
+    cat('达到1000个feature,贪婪算法搜索不到最优feature，停止搜索')
+    return(data.frame(feature_selected=basic_f,AccumTrain_AUC=basic_auc,AccumTest_AUC=auc_list_test))
+  }
+  
   # outp_df <<- cbind()
   if(AucMax>args$train_thre & test_auc>args$test_thre){
     return(data.frame(feature_selected=basic_f,AccumTrain_AUC=basic_auc,AccumTest_AUC=auc_list_test))
@@ -131,8 +143,7 @@ MAX_AUC_FUN_train_test = function(loop_feature){
 
 cat('-----------------------output----------------------------------------------\n')
 
-first_test_auc = Calc_auc(test_x[,first_f],test_y)
-cat(sprintf("feature个数: %d, train auc: %f, test auc: %s\n",j+1,first_auc,first_test_auc))
+cat(sprintf("feature个数: %d, train auc: %f, test auc: %s\n",j+1,first_auc,test_auc_first))
 
 outp = MAX_AUC_FUN_train_test(all_feature)
 
